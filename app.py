@@ -58,7 +58,7 @@ def main():
             st.sidebar.error(f'Error: {e}')
             return
     else:
-        df = pd.read_csv("Titanic_Data.csv")  # Replace with your default dataset path or name
+        df = pd.read_csv("Titanic_DAta.csv")  # Replace with your default dataset path or name
         st.sidebar.success('Default dataset loaded!')
 
     # Data exploration and preprocessing
