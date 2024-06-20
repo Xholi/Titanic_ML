@@ -57,7 +57,7 @@ def main():
         except Exception as e:
             st.sidebar.error(f'Error: {e}')
             return
-    else:
+      else:
         df = pd.read_csv("Titanic_DAta.csv")  # Replace with your default dataset path or name
         st.sidebar.success('File successfully uploaded!')
 
