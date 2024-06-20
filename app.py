@@ -23,7 +23,7 @@ from collections import Counter
 from sklearn.model_selection import KFold, StratifiedKFold
 import warnings
 import joblib
-from pivottablejs import pivot_ui
+# from pivottablejs import pivot_ui
 import streamlit as st
 
 warnings.filterwarnings("ignore")
@@ -107,8 +107,8 @@ def main():
     st.subheader('Dataset Head')
     st.write(df.head())
 
-    st.subheader('Dataset Types')
-    st.write(df.dtypes)
+    # st.subheader('Dataset Types')
+    # st.write(df.dtypes)
 
     women = df.loc[df.Sex == 'female']["Survived"]
     rate_women = sum(women)/len(women)
