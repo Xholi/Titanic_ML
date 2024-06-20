@@ -97,7 +97,7 @@ def main():
     if uploaded_file is not None:
         df = pd.read_csv(uploaded_file)
     else:
-        df = pd.read_csv('titanic.csv')
+        df = pd.read_csv('Titanic_DAta.csv')
     
     st.title('Titanic Dataset Analysis and Model Training')
 
