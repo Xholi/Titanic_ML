@@ -27,11 +27,20 @@ def load_data(file):
 
 # Main function to run the Streamlit app
 def main():
-    st.set_page_config(layout="wide", page_title="Titanic Dataset Analysis and Model Training", page_icon=":ship:")
+    st.set_page_config(layout="wide", page_title="Titanic Dataset Analysis and Model Training", page_icon=":ship:", initial_sidebar_state="expanded", theme={"primaryColor": "#1a1a1a"})
 
     # Sidebar - File Upload
     st.sidebar.title('Upload your CSV or Excel file')
     uploaded_file = st.sidebar.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx"])
+
+    # Display summary message initially
+    st.title('Titanic Dataset Analysis and Model Training')
+    st.write("""
+        Welcome to the Titanic Dataset Analysis and Model Training App.
+        This app allows you to upload a Titanic dataset, explore the data, visualize key metrics, 
+        and train machine learning models to predict survival.
+        Please upload a CSV or Excel file to get started.
+    """)
 
     # If file is uploaded, load the data
     if uploaded_file is not None:
@@ -73,8 +82,8 @@ def main():
             st.write(f"Cross Validation Score: {round(np.mean(cross_val_score(model, X, y, cv=10)), 2) * 100:.2f}%")
             st.write("Confusion Matrix:\n", confusion_matrix(y_test, predictions))
 
-        # Display main title and introduction
-        st.title('Titanic Dataset Analysis and Model Training')
+        # Remove summary message after file upload
+        st.empty()
 
         # Data Exploration Section
         st.header('Data Exploration')
@@ -82,13 +91,6 @@ def main():
         # Dataset Shape
         st.subheader('Dataset Shape')
         st.write(f"The dataset has {encoded_data.shape[0]} rows and {encoded_data.shape[1]} columns.")
-
-        # Missing Values Heatmap
-        st.subheader('Missing Values Heatmap')
-        fig, ax = plt.subplots(figsize=(10, 8))
-        sns.heatmap(df.isnull(), cbar=False, cmap='viridis', ax=ax)
-        plt.title('Missing Values')
-        st.pyplot(fig)
 
         # Crosstab and Survival Stats
         st.subheader('Survival Stats by Sex and Pclass (Crosstab)')
@@ -130,12 +132,6 @@ def main():
         axs[1, 1].set_title('Survived by Parch')
 
         st.pyplot(fig)
-
-        # Imputing missing values (if applicable in the uploaded dataset)
-        if df.isnull().sum().any():
-            st.header('Imputing Missing Values')
-            st.subheader('Handling Missing Age Values')
-            st.write("Using random values between median-20 to median+20 for missing values")
 
         # Model training and evaluation
         st.header('Model Training and Evaluation')
