@@ -28,7 +28,7 @@ def load_data(file):
 # Main function to run the Streamlit app
 def main():
     # st.set_page_config(layout="wide", page_title="Titanic Dataset Analysis and Model Training", page_icon=":ship:", initial_sidebar_state="expanded", theme="dark")
-    st.layout("wide")
+    # st.layout("wide")
     # Sidebar - File Upload
     st.sidebar.title('Upload your CSV or Excel file')
     uploaded_file = st.sidebar.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx"])
