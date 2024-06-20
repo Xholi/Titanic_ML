@@ -7,7 +7,7 @@ from sklearn.model_selection import train_test_split, cross_val_score
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
 import joblib
 
 # Function for label encoding
@@ -27,8 +27,8 @@ def load_data(file):
 
 # Main function to run the Streamlit app
 def main():
-    st.set_page_config(layout="wide", page_title="Titanic Dataset Analysis and Model Training", page_icon=":ship:", initial_sidebar_state="expanded", theme={"primaryColor": "#1a1a1a"})
-
+    # st.set_page_config(layout="wide", page_title="Titanic Dataset Analysis and Model Training", page_icon=":ship:", initial_sidebar_state="expanded", theme="dark")
+    st.layout("wide")
     # Sidebar - File Upload
     st.sidebar.title('Upload your CSV or Excel file')
     uploaded_file = st.sidebar.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx"])
@@ -72,15 +72,18 @@ def main():
             "DecisionTreeClassifier": DecisionTreeClassifier()
         }
 
+        model_performance = {}
+
         for key, classifier in classifiers.items():
             classifier.fit(X_train, y_train)
-
-        # Evaluation report function
-        def evaluationReport(model, predictions):
-            st.write("============= ", model.__class__.__name__, " Report ==============")
-            st.write(f"Accuracy Score : {accuracy_score(y_test, predictions) * 100:.2f}% ")
-            st.write(f"Cross Validation Score: {round(np.mean(cross_val_score(model, X, y, cv=10)), 2) * 100:.2f}%")
-            st.write("Confusion Matrix:\n", confusion_matrix(y_test, predictions))
+            predictions = classifier.predict(X_test)
+            accuracy = accuracy_score(y_test, predictions)
+            cross_val = np.mean(cross_val_score(classifier, X, y, cv=10))
+            model_performance[key] = {
+                'Accuracy': accuracy,
+                'Cross Validation Score': cross_val,
+                'Classification Report': classification_report(y_test, predictions, output_dict=True)
+            }
 
         # Remove summary message after file upload
         st.empty()
@@ -105,7 +108,6 @@ def main():
 
         # Visualizations
         st.header('Visualizations')
-        st.set_option('deprecation.showPyplotGlobalUse', False)
 
         # Countplot Survived
         st.subheader('Countplot of Survived')
@@ -133,13 +135,30 @@ def main():
 
         st.pyplot(fig)
 
-        # Model training and evaluation
-        st.header('Model Training and Evaluation')
+        # Model Performance Comparison
+        st.header('Model Performance Comparison')
 
-        for key, classifier in classifiers.items():
-            st.subheader(f"{classifier.__class__.__name__} Model Evaluation")
-            predictions = classifier.predict(X_test)
-            evaluationReport(classifier, predictions)
+        # Create dataframe from model_performance dictionary
+        df_performance = pd.DataFrame.from_dict({(i, j): model_performance[i][j] 
+                                                for i in model_performance.keys() 
+                                                for j in model_performance[i].keys()},
+                                                orient='index')
+
+        # Plotting model comparison
+        st.subheader('Accuracy and Cross Validation Scores')
+        st.write(df_performance[['Accuracy', 'Cross Validation Score']])
+
+        fig, ax = plt.subplots(figsize=(10, 8))
+        df_performance.plot(kind='bar', ax=ax)
+        ax.set_ylabel('Score')
+        ax.set_title('Model Performance Comparison')
+        st.pyplot(fig)
+
+        # Detailed Classification Reports
+        st.subheader('Classification Reports')
+        for model, report in model_performance.items():
+            st.subheader(f'{model} Classification Report')
+            st.text_area(f'{model} Classification Report', str(report['Classification Report']))
 
         # Saving models
         st.header('Saving Models')
