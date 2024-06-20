@@ -24,7 +24,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import plotly.express as px
 
-from pivottablejs import pivot_ui
+# from pivottablejs import pivot_ui
 
 # Function for label encoding
 from sklearn.preprocessing import LabelEncoder
@@ -70,8 +70,8 @@ def main():
         st.write(df.dtypes)
 
         # Pivot Table
-        st.subheader('Pivot Table')
-        pivot_ui(df)
+        # st.subheader('Pivot Table')
+        # pivot_ui(df)
 
         # Missing Values Heatmap
         st.subheader('Missing Values Heatmap')
