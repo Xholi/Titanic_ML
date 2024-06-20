@@ -9,6 +9,7 @@ from sklearn.manifold import TSNE
 from sklearn.decomposition import PCA, TruncatedSVD
 import matplotlib.patches as mpatches
 import time
+from sklearn.preprocessing import LabelEncoder
 from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
