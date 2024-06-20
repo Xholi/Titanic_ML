@@ -1,14 +1,30 @@
-import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA, TruncatedSVD
+import matplotlib.patches as mpatches
+import time
+
+# classifier libraries
 from sklearn.linear_model import LogisticRegression
+from sklearn.svm import SVC
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.metrics import accuracy_score, confusion_matrix, classification_report
-import joblib
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.model_selection import train_test_split, cross_val_score
+from sklearn.metrics import (precision_score, recall_score, f1_score, roc_auc_score, accuracy_score,
+                             classification_report, confusion_matrix)
+from sklearn.model_selection import KFold, StratifiedKFold
+import warnings
+warnings.filterwarnings("ignore")
+
+import streamlit as st
+import plotly.graph_objects as go
+import plotly.express as px
+
+from pivottablejs import pivot_ui
 
 # Function for label encoding
 from sklearn.preprocessing import LabelEncoder
@@ -27,20 +43,11 @@ def load_data(file):
 
 # Main function to run the Streamlit app
 def main():
-    # st.set_page_config(layout="wide", page_title="Titanic Dataset Analysis and Model Training", page_icon=":ship:", initial_sidebar_state="expanded", theme="dark")
-    # st.layout("wide")
+    st.set_page_config(layout="wide", page_title="Titanic Dataset Analysis and Model Training", page_icon=":ship:")
+
     # Sidebar - File Upload
     st.sidebar.title('Upload your CSV or Excel file')
     uploaded_file = st.sidebar.file_uploader("Upload a CSV or Excel file", type=["csv", "xlsx"])
-
-    # Display summary message initially
-    st.title('Titanic Dataset Analysis and Model Training')
-    st.write("""
-        Welcome to the Titanic Dataset Analysis and Model Training App.
-        This app allows you to upload a Titanic dataset, explore the data, visualize key metrics, 
-        and train machine learning models to predict survival.
-        Please upload a CSV or Excel file to get started.
-    """)
 
     # If file is uploaded, load the data
     if uploaded_file is not None:
@@ -51,49 +58,27 @@ def main():
             st.sidebar.error(f'Error: {e}')
             return
 
-        # Data preparation
-        encoded_data = DataPreparation(df)
-        encoded_data["Family"] = encoded_data["SibSp"] + encoded_data["Parch"]
+        # Data exploration and preprocessing
+        st.title('Titanic Dataset Analysis and Model Training')
 
-        # Drop unnecessary columns
-        encoded_data = encoded_data.drop(['PassengerId'], axis=1)
-
-        # Split into X and y
-        X = encoded_data.drop("Survived", axis=1)
-        y = encoded_data["Survived"]
-
-        # Train test split
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=3)
-
-        # Model training
-        classifiers = {
-            "LogisticRegression": LogisticRegression(),
-            "RandomForest": RandomForestClassifier(),
-            "DecisionTreeClassifier": DecisionTreeClassifier()
-        }
-
-        model_performance = {}
-
-        for key, classifier in classifiers.items():
-            classifier.fit(X_train, y_train)
-            predictions = classifier.predict(X_test)
-            accuracy = accuracy_score(y_test, predictions)
-            cross_val = np.mean(cross_val_score(classifier, X, y, cv=10))
-            model_performance[key] = {
-                'Accuracy': accuracy,
-                'Cross Validation Score': cross_val,
-                'Classification Report': classification_report(y_test, predictions, output_dict=True)
-            }
-
-        # Remove summary message after file upload
-        st.empty()
-
-        # Data Exploration Section
-        st.header('Data Exploration')
-
-        # Dataset Shape
+        # Display dataset summary
+        st.header('Dataset Summary')
         st.subheader('Dataset Shape')
-        st.write(f"The dataset has {encoded_data.shape[0]} rows and {encoded_data.shape[1]} columns.")
+        st.write(f"The dataset has {df.shape[0]} rows and {df.shape[1]} columns.")
+
+        st.subheader('Data Types')
+        st.write(df.dtypes)
+
+        # Pivot Table
+        st.subheader('Pivot Table')
+        pivot_ui(df)
+
+        # Missing Values Heatmap
+        st.subheader('Missing Values Heatmap')
+        fig, ax = plt.subplots(figsize=(10, 8))
+        sns.heatmap(df.isnull(), cbar=False, cmap='viridis', ax=ax)
+        plt.title('Missing Values')
+        st.pyplot(fig)
 
         # Crosstab and Survival Stats
         st.subheader('Survival Stats by Sex and Pclass (Crosstab)')
@@ -117,7 +102,7 @@ def main():
             ax.bar_label(container)
         st.pyplot(fig)
 
-        # Histograms
+        # Histograms by Category
         st.subheader('Histograms by Category')
         fig, axs = plt.subplots(2, 2, figsize=(15, 12))
 
@@ -135,30 +120,76 @@ def main():
 
         st.pyplot(fig)
 
-        # Model Performance Comparison
-        st.header('Model Performance Comparison')
+        # Imputing missing values
+        st.subheader('Imputing Missing Values')
+        st.write("Using random values between median-20 to median+20 for missing values")
+        median_age = df['Age'].median()
+        lower_limit = median_age - 20
+        upper_limit = median_age + 20
+        missing_values = df['Age'].isnull().sum()
+        random_numbers = np.random.uniform(lower_limit, upper_limit, missing_values)
+        df.loc[df['Age'].isnull(), 'Age'] = random_numbers
+        st.write("Missing values in 'Age' column imputed.")
 
-        # Create dataframe from model_performance dictionary
-        df_performance = pd.DataFrame.from_dict({(i, j): model_performance[i][j] 
-                                                for i in model_performance.keys() 
-                                                for j in model_performance[i].keys()},
-                                                orient='index')
+        # Encoding categorical variables
+        encoded_data = DataPreparation(df)
+        encoded_data["Family"] = encoded_data["SibSp"] + encoded_data["Parch"]
 
-        # Plotting model comparison
-        st.subheader('Accuracy and Cross Validation Scores')
-        st.write(df_performance[['Accuracy', 'Cross Validation Score']])
+        # Drop unnecessary columns
+        encoded_data = encoded_data.drop(['PassengerId'], axis=1)
+
+        # Display encoded data
+        st.subheader('Encoded Data Sample')
+        st.write(encoded_data.head())
+
+        # Correlation Matrix
+        st.subheader('Correlation Matrix')
+        corr = encoded_data.corr()
+        fig, ax = plt.subplots(figsize=(12, 10))
+        sns.heatmap(corr, annot=True, cmap='coolwarm', linewidths=0.5, ax=ax)
+        st.pyplot(fig)
+
+        # Model Training and Evaluation
+        st.header('Model Training and Evaluation')
+
+        X = encoded_data.drop("Survived", axis=1)
+        y = encoded_data["Survived"]
+
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=3)
+
+        classifiers = {
+            "LogisticRegression": LogisticRegression(),
+            "RandomForest": RandomForestClassifier(),
+            "DecisionTreeClassifier": DecisionTreeClassifier()
+        }
+
+        for key, classifier in classifiers.items():
+            classifier.fit(X_train, y_train)
+
+        # Evaluation report function
+        def evaluationReport(model, predictions):
+            st.write("============= ", model.__class__.__name__, " Report ==============")
+            st.write(f"Accuracy Score : {accuracy_score(y_test, predictions) * 100:.2f}% ")
+            st.write(f"Cross Validation Score: {round(np.mean(cross_val_score(model, X, y, cv=10)), 2) * 100:.2f}%")
+            st.write("Confusion Matrix:\n", confusion_matrix(y_test, predictions))
+
+        # Displaying model performance
+        st.subheader('Model Performance Comparison')
+
+        df_performance = pd.DataFrame(columns=['Accuracy', 'Cross Validation Score'])
+        for key, classifier in classifiers.items():
+            predictions = classifier.predict(X_test)
+            accuracy = accuracy_score(y_test, predictions)
+            cv_score = np.mean(cross_val_score(classifier, X, y, cv=10))
+            df_performance.loc[key] = [accuracy, cv_score]
+
+        st.write(df_performance)
 
         fig, ax = plt.subplots(figsize=(10, 8))
         df_performance.plot(kind='bar', ax=ax)
         ax.set_ylabel('Score')
         ax.set_title('Model Performance Comparison')
         st.pyplot(fig)
-
-        # Detailed Classification Reports
-        st.subheader('Classification Reports')
-        for model, report in model_performance.items():
-            st.subheader(f'{model} Classification Report')
-            st.text_area(f'{model} Classification Report', str(report['Classification Report']))
 
         # Saving models
         st.header('Saving Models')
