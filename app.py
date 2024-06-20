@@ -2,29 +2,13 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
-from sklearn.manifold import TSNE
-from sklearn.decomposition import PCA, TruncatedSVD
-import matplotlib.patches as mpatches
-import time
-
-# classifier libraries
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier
+import joblib
 from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.metrics import (precision_score, recall_score, f1_score, roc_auc_score, accuracy_score,
-                             classification_report, confusion_matrix)
-from sklearn.model_selection import KFold, StratifiedKFold
-import warnings
-warnings.filterwarnings("ignore")
-
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score, confusion_matrix
 import streamlit as st
-import plotly.graph_objects as go
-import plotly.express as px
-
-from pivottablejs import pivot_ui
 
 # Function for label encoding
 from sklearn.preprocessing import LabelEncoder
@@ -68,10 +52,6 @@ def main():
 
         st.subheader('Data Types')
         st.write(df.dtypes)
-
-        # Pivot Table
-        st.subheader('Pivot Table')
-        pivot_ui(df)
 
         # Missing Values Heatmap
         st.subheader('Missing Values Heatmap')
@@ -194,7 +174,7 @@ def main():
         # Saving models
         st.header('Saving Models')
         for key, classifier in classifiers.items():
-            joblib.dump(classifier, f'XholisileMantshongo_model_{classifier.__class__.__name__}.pkl')
+            joblib.dump(classifier, f'model_{classifier.__class__.__name__}.pkl')
             st.write(f"{classifier.__class__.__name__} model saved.")
 
     else:
