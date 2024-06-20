@@ -50,8 +50,8 @@ def main():
         st.subheader('Dataset Shape')
         st.write(f"The dataset has {df.shape[0]} rows and {df.shape[1]} columns.")
 
-        st.subheader('Data Types')
-        st.write(df.dtypes)
+        # st.subheader('Data Types')
+        # st.write(df.dtypes)
 
         # Missing Values Heatmap
         st.subheader('Missing Values Heatmap')
@@ -103,13 +103,14 @@ def main():
         # Imputing missing values
         st.subheader('Imputing Missing Values')
         st.write("Using random values between median-20 to median+20 for missing values")
-        median_age = df['Age'].median()
-        lower_limit = median_age - 20
-        upper_limit = median_age + 20
-        missing_values = df['Age'].isnull().sum()
-        random_numbers = np.random.uniform(lower_limit, upper_limit, missing_values)
-        df.loc[df['Age'].isnull(), 'Age'] = random_numbers
-        st.write("Missing values in 'Age' column imputed.")
+        median_age = df['Age'].median() if not df['Age'].isnull().all() else 0
+        if median_age != 0:
+            lower_limit = median_age - 20
+            upper_limit = median_age + 20
+            missing_values = df['Age'].isnull().sum()
+            random_numbers = np.random.uniform(lower_limit, upper_limit, missing_values)
+            df.loc[df['Age'].isnull(), 'Age'] = random_numbers
+            st.write("Missing values in 'Age' column imputed.")
 
         # Encoding categorical variables
         encoded_data = DataPreparation(df)
