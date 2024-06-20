@@ -38,6 +38,9 @@ def main():
         try:
             df = load_data(uploaded_file)
             st.sidebar.success('File successfully uploaded!')
+        else:
+            df = pd.read_csv("Titanic_DAta.csv")
+            st.sidebar.success(' successfully uploaded!')
         except Exception as e:
             st.sidebar.error(f'Error: {e}')
             return
