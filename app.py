@@ -8,10 +8,11 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.metrics import accuracy_score, confusion_matrix
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.cluster import KMeans
 import streamlit as st
 
 # Function for label encoding
-from sklearn.preprocessing import LabelEncoder
 label_encoder = LabelEncoder()
 
 def DataPreparation(data):
@@ -24,6 +25,14 @@ def DataPreparation(data):
 def load_data(file):
     df = pd.read_csv(file)
     return df
+
+# Function to create survival clusters
+def create_clusters(data, n_clusters=2):
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(data)
+    kmeans = KMeans(n_clusters=n_clusters, random_state=3)
+    clusters = kmeans.fit_predict(scaled_data)
+    return clusters
 
 # Main function to run the Streamlit app
 def main():
@@ -60,57 +69,23 @@ def main():
     plt.title('Missing Values')
     st.pyplot(fig)
 
-    # Crosstab and Survival Stats
-    st.subheader('Survival Stats by Sex and Pclass (Crosstab)')
-    survived = pd.crosstab(
-        df['Survived'],
-        columns=[df['Sex'], df['Pclass']],
-        margins=True
-    )
-    survived.index = ["Died", "Survived", "Total"]
-    df_survival_stats = (survived / survived.loc['Total']) * 100
-    st.write(df_survival_stats)
-
-    # Visualizations
-    st.header('Visualizations')
-
-    # Countplot Survived
-    st.subheader('Countplot of Survived')
-    fig, ax = plt.subplots(figsize=(8, 6))
-    sns.countplot(data=df, x='Survived', hue='Survived', ax=ax)
-    for container in ax.containers:
-        ax.bar_label(container)
-    st.pyplot(fig)
-
-    # Histograms by Category
-    st.subheader('Histograms by Category')
-    fig, axs = plt.subplots(2, 2, figsize=(15, 12))
-
-    sns.histplot(data=df, x='Pclass', hue='Survived', multiple='stack', ax=axs[0, 0])
-    axs[0, 0].set_title('Survived by Pclass')
-
-    sns.histplot(data=df, x='Sex', hue='Survived', multiple='stack', ax=axs[0, 1])
-    axs[0, 1].set_title('Survived by Sex')
-
-    sns.histplot(data=df, x='Embarked', hue='Survived', multiple='stack', ax=axs[1, 0])
-    axs[1, 0].set_title('Survived by Embarked')
-
-    sns.histplot(data=df, x='Parch', hue='Survived', multiple='stack', ax=axs[1, 1])
-    axs[1, 1].set_title('Survived by Parch')
-
-    st.pyplot(fig)
-
     # Imputing missing values
     st.subheader('Imputing Missing Values')
     st.write("Using random values between median-20 to median+20 for missing values")
-    median_age = df['Age'].median() if not df['Age'].isnull().all() else 0
-    if median_age != 0:
-        lower_limit = median_age - 20
-        upper_limit = median_age + 20
-        missing_values = df['Age'].isnull().sum()
-        random_numbers = np.random.uniform(lower_limit, upper_limit, missing_values)
-        df.loc[df['Age'].isnull(), 'Age'] = random_numbers
-        st.write("Missing values in 'Age' column imputed.")
+
+    try:
+        median_age = df['Age'].median()
+        if pd.isnull(median_age):
+            median_age = df['Age'].astype(float).median()
+    except Exception as e:
+        st.sidebar.error(f'Error: {e}')
+        return
+    lower_limit = median_age - 20
+    upper_limit = median_age + 20
+    missing_values = df['Age'].isnull().sum()
+    random_numbers = np.random.uniform(lower_limit, upper_limit, missing_values)
+    df.loc[df['Age'].isnull(), 'Age'] = random_numbers
+    st.write("Missing values in 'Age' column imputed.")
 
     # Encoding categorical variables
     encoded_data = DataPreparation(df)
@@ -177,6 +152,20 @@ def main():
     for key, classifier in classifiers.items():
         joblib.dump(classifier, f'model_{classifier.__class__.__name__}.pkl')
         st.write(f"{classifier.__class__.__name__} model saved.")
+
+    # Create and Visualize Survival Clusters
+    st.header('Survival Clusters')
+    clusters = create_clusters(encoded_data.drop('Survived', axis=1))
+    df['Cluster'] = clusters
+
+    st.subheader('Cluster Counts')
+    st.write(df['Cluster'].value_counts())
+
+    st.subheader('Clusters Visualization')
+    fig, ax = plt.subplots(figsize=(10, 8))
+    sns.scatterplot(data=df, x='Age', y='Fare', hue='Cluster', palette='viridis', ax=ax)
+    plt.title('Clusters Visualization by Age and Fare')
+    st.pyplot(fig)
 
 # Run the main function
 if __name__ == '__main__':
