@@ -7,3 +7,5 @@ scikit-learn
 joblib
 python-dotenv
 xlrd
+plotly
+matplotlib
