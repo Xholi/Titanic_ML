@@ -16,20 +16,15 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 import collections
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, GridSearchCV, KFold, StratifiedKFold
 from sklearn.pipeline import make_pipeline
-from sklearn.metrics import (precision_score, recall_score, f1_score, roc_auc_score, accuracy_score,
-                             classification_report)
-from collections import Counter
-from sklearn.model_selection import KFold, StratifiedKFold
-import warnings
+from sklearn.metrics import (precision_score, recall_score, f1_score, roc_auc_score, accuracy_score, classification_report, confusion_matrix)
 import joblib
-# from pivottablejs import pivot_ui
 import streamlit as st
+import warnings
 
 warnings.filterwarnings("ignore")
 
-# Function for label encoding
 label_encoder = LabelEncoder()
 
 def DataPreparation(data):
@@ -37,7 +32,6 @@ def DataPreparation(data):
         data[col] = label_encoder.fit_transform(data[col])
     return data
 
-# Function to create and evaluate models
 def create_and_evaluate_models(X_train, y_train, X_test, y_test):
     classifiers = {
         "LogisticRegression": LogisticRegression(),
@@ -53,10 +47,8 @@ def create_and_evaluate_models(X_train, y_train, X_test, y_test):
             'training_score': round(training_score.mean(), 2) * 100,
             'model': classifier
         }
-    
     return results
 
-# Function to perform grid search for hyperparameter tuning
 def grid_search_tuning(X_train, y_train):
     # Logistic Regression
     log_reg_params = {"penalty": ['l1', 'l2'], 'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000]}
@@ -78,7 +70,6 @@ def grid_search_tuning(X_train, y_train):
 
     return log_reg, random_forest, tree_clf
 
-# Function to evaluate models
 def evaluation_report(model, predictions, X_test, y_test):
     return {
         "accuracy_score": model.score(X_test, y_test) * 100,
@@ -86,11 +77,9 @@ def evaluation_report(model, predictions, X_test, y_test):
         "confusion_matrix": confusion_matrix(y_test, predictions)
     }
 
-# Main function to run the Streamlit app
 def main():
     st.set_page_config(layout="wide", page_title="Titanic Dataset Analysis and Model Training", page_icon=":ship:")
 
-    # Sidebar - File Upload
     st.sidebar.title('Upload your CSV file')
     uploaded_file = st.sidebar.file_uploader("Upload a CSV file", type=["csv"])
 
@@ -108,16 +97,13 @@ def main():
     st.subheader('Dataset Head')
     st.write(df.head())
 
-    # st.subheader('Dataset Types')
-    # st.write(df.dtypes)
-
     women = df.loc[df.Sex == 'female']["Survived"]
     rate_women = sum(women)/len(women)
-    st.write("% of women who survived:", round(rate_women, 2) * 100)
+    st.write("% of women who survived:", round(rate_women * 100, 2))
 
     men = df.loc[df.Sex == 'male']["Survived"]
     rate_men = sum(men)/len(men)
-    st.write("% of men who survived:", round(rate_men, 2) * 100)
+    st.write("% of men who survived:", round(rate_men * 100, 2))
 
     st.subheader('Survival Crosstab')
     survived = pd.crosstab(df['Survived'], columns=[df['Sex'], df['Pclass']], margins=True)
@@ -128,13 +114,11 @@ def main():
     st.write("From the crosstab we can conclude that class has a direct impact on survival rate as well as gender:")
     st.write("1. It is safe to conclude that the lower the class the more likely to die, class order goes as follows: 1 -Being the highest and 3-Being the lowest.")
     st.write("2. More men died, compared to females. This is also in tandem with class as well.")
-    st.write("3. In Percentage terms, 19% of men survived compared to 74% survival rate for women.")
+    st.write(f"3. In Percentage terms, {round(rate_men * 100, 2)}% of men survived compared to {round(rate_women * 100, 2)}% survival rate for women.")
 
     st.subheader('Missing Values Heatmap')
-    fig, ax = plt.subplots(figsize=(10, 8))
-    sns.heatmap(df.isnull(), cbar=False, cmap='viridis', ax=ax)
-    plt.title('Missing Values')
-    st.pyplot(fig)
+    fig = px.imshow(df.isnull(), color_continuous_scale='Viridis', aspect='auto')
+    st.plotly_chart(fig)
 
     st.subheader('Data Imputation')
     median = 28
@@ -152,10 +136,9 @@ def main():
     st.pyplot(fig)
 
     st.subheader('Age Distribution')
-    fig, ax = plt.subplots(figsize=(15, 8))
-    sns.histplot(data=df, x='Age', hue='Survived', multiple='stack', bins=10, kde=True, ax=ax)
-    plt.title("Age Distribution")
-    st.pyplot(fig)
+    df['Age'] = pd.to_numeric(df['Age'], errors='coerce')
+    fig = px.histogram(df, x='Age', color='Survived', nbins=10, marginal='box', title="Age Distribution")
+    st.plotly_chart(fig)
 
     encoded_data = DataPreparation(df)
 
@@ -203,11 +186,51 @@ def main():
     st.write("Accuracy Decision Tree Classifier:", accuracy_score(y_test, dt_val_predictions) * 100)
 
     st.subheader('Evaluation Reports')
-    st.write(evaluation_report(log_reg, lr_val_predictions, X_test, y_test))
-    st.write(evaluation_report(random_forest, rf_val_predictions, X_test, y_test))
-    st.write(evaluation_report(tree_clf, dt_val_predictions, X_test, y_test))
+    evaluation_reports = {
+        "Logistic Regression": evaluation_report(log_reg, lr_val_predictions, X_test, y_test),
+        "Random Forest": evaluation_report(random_forest, rf_val_predictions, X_test, y_test),
+        "Decision Tree": evaluation_report(tree_clf, dt_val_predictions, X_test, y_test)
+    }
 
-    # Saving models
+    # st.write(evaluation_reports)
+
+    # Bar graph to compare evaluation scores
+    scores = {
+        'Model': ['Logistic Regression', 'Random Forest', 'Decision Tree'],
+        'Accuracy': [evaluation_reports['Logistic Regression']['accuracy_score'], 
+                     evaluation_reports['Random Forest']['accuracy_score'], 
+                     evaluation_reports['Decision Tree']['accuracy_score']],
+        'Cross Validation': [evaluation_reports['Logistic Regression']['cross_val_score'],
+                             evaluation_reports['Random Forest']['cross_val_score'],
+                             evaluation_reports['Decision Tree']['cross_val_score']]
+    }
+    
+    scores_df = pd.DataFrame(scores)
+    fig = px.bar(scores_df, x='Model', y=['Accuracy', 'Cross Validation'], barmode='group', title="Model Comparison")
+    st.plotly_chart(fig)
+
+    # Additional visuals for insights
+    st.subheader('Fare Distribution')
+    fig = px.histogram(df, x='Fare', color='Survived', nbins=10, marginal='box', title="Fare Distribution")
+    st.plotly_chart(fig)
+
+    st.subheader('3D Scatter Plot of Age, Fare, and Survival')
+    fig = px.scatter_3d(df, x='Age', y='Fare', z='Survived', color='Survived', symbol='Sex', 
+                        title="3D Scatter Plot of Age, Fare, and Survival", height=800)
+    st.plotly_chart(fig)
+
+    st.subheader('PCA 2D Scatter Plot')
+    pca = PCA(n_components=2)
+    pca_components = pca.fit_transform(encoded_data)
+    fig = px.scatter(pca_components, x=0, y=1, color=df['Survived'], title="PCA 2D Scatter Plot", height=800)
+    st.plotly_chart(fig)
+
+    st.subheader('t-SNE 2D Scatter Plot')
+    tsne = TSNE(n_components=2)
+    tsne_components = tsne.fit_transform(encoded_data)
+    fig = px.scatter(tsne_components, x=0, y=1, color=df['Survived'], title="t-SNE 2D Scatter Plot", height=800)
+    st.plotly_chart(fig)
+
     joblib.dump(log_reg, 'logistic_regression_model.pkl')
     joblib.dump(random_forest, 'random_forest_model.pkl')
     joblib.dump(tree_clf, 'decision_tree_model.pkl')
