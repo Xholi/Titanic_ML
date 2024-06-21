@@ -2,9 +2,10 @@
 import streamlit as st
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
-import random
 # from streamlit.report_thread import ReportThread
 # from streamlit.server.server import Server
+
+import random
 
 # Dummy database for user data (can be replaced with a real database)
 user_database = {
@@ -70,6 +71,39 @@ class ElectricityTopUpApp:
             monthly_data["Cost"].append(round(i * 5 * self.unit_price, 2))
         return weekly_data, monthly_data
 
+    @staticmethod
+    def get_all_users_consumption_data():
+        # Aggregate consumption data for all users
+        all_users_data = {"Weekly": {"Date": [], "Units": [], "Cost": []}, "Monthly": {"Date": [], "Units": [], "Cost": []}}
+        
+        # Collect data for each user
+        for username, user_data in user_database.items():
+            if username != "admin":  # Exclude admin from data aggregation
+                app = ElectricityTopUpApp(username)
+                weekly_data, monthly_data = app.get_consumption_data()
+                
+                # Aggregate weekly data
+                for i in range(len(weekly_data["Date"])):
+                    if len(all_users_data["Weekly"]["Date"]) <= i:
+                        all_users_data["Weekly"]["Date"].append(weekly_data["Date"][i])
+                        all_users_data["Weekly"]["Units"].append(weekly_data["Units"][i])
+                        all_users_data["Weekly"]["Cost"].append(weekly_data["Cost"][i])
+                    else:
+                        all_users_data["Weekly"]["Units"][i] += weekly_data["Units"][i]
+                        all_users_data["Weekly"]["Cost"][i] += weekly_data["Cost"][i]
+                
+                # Aggregate monthly data
+                for i in range(len(monthly_data["Date"])):
+                    if len(all_users_data["Monthly"]["Date"]) <= i:
+                        all_users_data["Monthly"]["Date"].append(monthly_data["Date"][i])
+                        all_users_data["Monthly"]["Units"].append(monthly_data["Units"][i])
+                        all_users_data["Monthly"]["Cost"].append(monthly_data["Cost"][i])
+                    else:
+                        all_users_data["Monthly"]["Units"][i] += monthly_data["Units"][i]
+                        all_users_data["Monthly"]["Cost"][i] += monthly_data["Cost"][i]
+
+        return all_users_data
+
 # Create functions for app interface
 def main():
     st.title("Electricity Top-Up App")
@@ -107,7 +141,7 @@ def main():
     if "username" not in st.session_state:
         st.session_state.username = ""
     if "is_admin" not in st.session_state:
-        st.session_state.is_admin = False
+        st.session_state.is_admin
 
     if st.session_state.logged_in:
         # Show app only if logged in
