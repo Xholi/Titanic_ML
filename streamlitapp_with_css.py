@@ -3,6 +3,8 @@ import streamlit as st
 import plotly.graph_objs as go
 from datetime import datetime, timedelta
 import random
+from streamlit.report_thread import ReportThread
+from streamlit.server.server import Server
 
 # Dummy database for user data (can be replaced with a real database)
 user_database = {
@@ -79,9 +81,9 @@ def main():
     if st.button("Login"):
         if username in user_database and password == user_database[username]["password"]:
             st.success("Logged in successfully!")
-            session_state.logged_in = True
-            session_state.username = username
-            session_state.is_admin = user_database[username]["is_admin"]
+            st.session_state.logged_in = True
+            st.session_state.username = username
+            st.session_state.is_admin = user_database[username]["is_admin"]
         else:
             st.error("Invalid username or password!")
 
